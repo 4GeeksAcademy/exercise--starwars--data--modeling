@@ -1,32 +1,73 @@
 import os
 import sys
-from sqlalchemy import Column, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship, declarative_base
+from datetime import datetime
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Boolean
+from sqlalchemy.orm import relationship, declarative_base, backref
 from sqlalchemy import create_engine
 from eralchemy2 import render_er
 
 Base = declarative_base()
 
-class Person(Base):
-    __tablename__ = 'person'
-    # Here we define columns for the table person
-    # Notice that each column is also a normal Python instance attribute.
+# Tabla Usuario
+class Usuario(Base):
+    __tablename__ = 'usuarios'
+    
     id = Column(Integer, primary_key=True)
-    name = Column(String(250), nullable=False)
+    email = Column(String, unique=True, nullable=False)
+    password = Column(String, nullable=False)
+    first_name = Column(String)
+    last_name = Column(String)
+    subscription_date = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+    
+    # Relación con los favoritos
+    favoritos = relationship('Favoritos', backref='usuario')
 
-class Address(Base):
-    __tablename__ = 'address'
-    # Here we define columns for the table address.
-    # Notice that each column is also a normal Python instance attribute.
+# Tabla Planeta
+class Planeta(Base):
+    __tablename__ = 'planetas'
+    
     id = Column(Integer, primary_key=True)
-    street_name = Column(String(250))
-    street_number = Column(String(250))
-    post_code = Column(String(250), nullable=False)
-    person_id = Column(Integer, ForeignKey('person.id'))
-    person = relationship(Person)
+    name = Column(String, unique=True, nullable=False)
+    climate = Column(String)
+    population = Column(String)
+    terrain = Column(String)
+    
+    # Relación con los favoritos
+    favoritos = relationship('Favoritos', backref='planeta')
 
-    def to_dict(self):
-        return {}
+# Tabla Personaje
+class Personaje(Base):
+    __tablename__ = 'personajes'
+    
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+    species = Column(String)
+    gender = Column(String)
+    homeworld_id = Column(Integer, ForeignKey('planetas.id'))
+    
+    homeworld = relationship('Planeta')
+    
+    # Relación con los favoritos
+    favoritos = relationship('Favoritos', backref='personaje')
+
+# Tabla Favoritos (tabla intermedia)
+class Favoritos(Base):
+    __tablename__ = 'favoritos'
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('usuarios.id'))
+    planet_id = Column(Integer, ForeignKey('planetas.id'), nullable=True)
+    character_id = Column(Integer, ForeignKey('personajes.id'), nullable=True)
+    
+    # Relaciones con usuario, planeta y personaje
+    usuario = relationship('Usuario', backref=backref('favoritos_usuario', lazy='dynamic'))
+    planeta = relationship('Planeta', backref=backref('favoritos_planeta', lazy='dynamic'))
+    personaje = relationship('Personaje', backref=backref('favoritos_personaje', lazy='dynamic'))
+
+# Crear la base de datos
+engine = create_engine('sqlite:///starwars_blog.db')
+Base.metadata.create_all(engine)
 
 ## Draw from SQLAlchemy base
 render_er(Base, 'diagram.png')
